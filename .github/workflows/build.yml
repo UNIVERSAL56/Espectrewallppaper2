@@ -1,4 +1,4 @@
-name: Compilar PowerSpectrum Ultimate 17 Modos APK
+name: Compilar PowerSpectrum Ultimate HD FX APK
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generar estructura del proyecto con nuevos espectros
+      - name: Generar estructura del proyecto con efectos visuales HD
         run: |
           mkdir -p app/src/main/java/com/ejemplo/espectrowallpaper
           mkdir -p app/src/main/res/xml
@@ -72,8 +72,8 @@ jobs:
                   applicationId = "com.ejemplo.espectrowallpaper"
                   minSdk = 26
                   targetSdk = 34
-                  versionCode = 10
-                  versionName = "3.5"
+                  versionCode = 11
+                  versionName = "3.6"
               }
 
               compileOptions {
@@ -224,7 +224,7 @@ jobs:
                       typeface = Typeface.DEFAULT_BOLD
                   }
                   val subtitle = TextView(this).apply {
-                      text = "17 Efectos Visuales (Incluye estilos Fractal Mandala y Cyber Wireframe). (Doble toque en tu pantalla para cambiar)."
+                      text = "17 Efectos Visuales (Modos 16 y 17 rediseñados inspirados en tus imágenes). Doble toque para cambiar."
                       textSize = 14f
                       setTextColor(Color.parseColor("#A0AAB8"))
                       setPadding(0, 12, 0, 40)
@@ -250,8 +250,8 @@ jobs:
                       12 to "13. Ondas Senoidales Superpuestas",
                       13 to "14. Vúmetro Analógico Dinámico",
                       14 to "15. Nebulosa de Partículas",
-                      15 to "16. Fractal Mandala Core (Estilo Imagen 1)",
-                      16 to "17. Cyber Wireframe Waterfall (Estilo Imagen 2)"
+                      15 to "16. Fractal Mandala HD (Estilo Imagen 1)",
+                      16 to "17. Cyber Wireframe Matrix HD (Estilo Imagen 2)"
                   )
 
                   val styleButtons = mutableListOf<Button>()
@@ -667,8 +667,8 @@ jobs:
                                   12 -> drawSuperimposedSines(canvas, w, h, colors)
                                   13 -> drawVumeterAnalog(canvas, w, h, colors)
                                   14 -> drawParticleNebula(canvas, w, h, colors)
-                                  15 -> drawFractalMandalaCore(canvas, w, h, colors)
-                                  16 -> drawCyberWireframeWaterfall(canvas, w, h, colors)
+                                  15 -> drawFractalMandalaCoreHD(canvas, w, h, colors)
+                                  16 -> drawCyberWireframeMatrixHD(canvas, w, h, colors)
                               }
                           }
                       } finally { if (canvas != null) holder.unlockCanvasAndPost(canvas) }
@@ -912,66 +912,90 @@ jobs:
                       }
                   }
 
-                  // 16. Fractal Mandala Core (Inspirado en la primera imagen[span_2](start_span)[span_2](end_span))
-                  private fun drawFractalMandalaCore(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                  // Modo 16: Fractal Mandala HD (Inspirado en la primera imagen con simetría de 4 ejes y núcleo orgánico[span_2](start_span)[span_2](end_span))
+                  private fun drawFractalMandalaCoreHD(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
                       val cx = w / 2f; val cy = h / 2f
-                      val baseR = min(w, h) * 0.22f + (bassEnergy * 0.4f)
+                      val baseR = min(w, h) * 0.28f + (bassEnergy * 0.6f)
                       strokePaint.shader = null
 
-                      // Dibujar múltiples capas simétricas rotatorias estilo mandala fractal[span_3](start_span)[span_3](end_span)
-                      for (layer in 0 until 5) {
+                      // Capas geométricas simétricas cruzadas de alta densidad[span_3](start_span)[span_3](end_span)
+                      for (layer in 0 until 6) {
                           wavePath.reset()
-                          val points = 32
-                          val radius = baseR * (0.5f + layer * 0.3f)
-                          val angleOffset = rotationAngle * (if (layer % 2 == 0) 1f else -1f) * (layer + 1)
+                          val points = 48
+                          val radius = baseR * (0.4f + layer * 0.22f)
+                          val angleOffset = rotationAngle * (if (layer % 2 == 0) 1f else -1f) * (layer + 0.5f)
 
                           for (i in 0..points) {
                               val angle = (i.toFloat() / points) * (2f * PI.toFloat()) + angleOffset
-                              val magMod = smoothedMagnitudes[i % numBands] * 0.15f
-                              val currentR = radius + (if (i % 2 == 0) magMod else -magMod)
+                              val freqMod = smoothedMagnitudes[i % numBands] * 0.22f
+                              val currentR = radius + (if (i % 2 == 0) freqMod else -freqMod)
                               val x = cx + cos(angle.toDouble()).toFloat() * currentR
                               val y = cy + sin(angle.toDouble()).toFloat() * currentR
                               if (i == 0) wavePath.moveTo(x, y) else wavePath.lineTo(x, y)
                           }
                           wavePath.close()
+
+                          // Simetría en espejo de 4 vías (Efecto Caleidoscopio)[span_4](start_span)[span_4](end_span)
                           strokePaint.color = colors[layer % colors.size]
-                          strokePaint.strokeWidth = 3f + layer
+                          strokePaint.strokeWidth = 3.5f
                           canvas.drawPath(wavePath, strokePaint)
+
+                          // Reflejo simétrico invertido horizontal y verticalmente[span_5](start_span)[span_5](end_span)
+                          canvas.save()
+                          canvas.scale(-1f, 1f, cx, cy)
+                          canvas.drawPath(wavePath, strokePaint)
+                          canvas.restore()
                       }
 
-                      // Núcleo brillante central pulsante[span_4](start_span)[span_4](end_span)
-                      glowPaint.shader = RadialGradient(cx, cy, baseR * 0.6f, colors[0], Color.TRANSPARENT, Shader.TileMode.CLAMP)
-                      canvas.drawCircle(cx, cy, baseR * 0.6f, glowPaint)
+                      // Núcleo central radiante tipo esfera cósmica[span_6](start_span)[span_6](end_span)
+                      glowPaint.shader = RadialGradient(cx, cy, baseR * 0.75f, colors[0], Color.TRANSPARENT, Shader.TileMode.CLAMP)
+                      canvas.drawCircle(cx, cy, baseR * 0.75f, glowPaint)
+
+                      strokePaint.color = Color.WHITE
+                      strokePaint.strokeWidth = 2f
+                      canvas.drawCircle(cx, cy, baseR * 0.4f, strokePaint)
                   }
 
-                  // 17. Cyber Wireframe Waterfall (Inspirado en la segunda imagen[span_5](start_span)[span_5](end_span))
-                  private fun drawCyberWireframeWaterfall(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
-                      val cols = 20
+                  // Modo 17: Cyber Wireframe Matrix HD (Inspirado en la segunda imagen con cascadas verticales y celdas cibernéticas[span_7](start_span)[span_7](end_span))
+                  private fun drawCyberWireframeMatrixHD(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cols = 28
                       val slotW = w / cols
                       strokePaint.shader = null
 
-                      // Estructura de alambre cibernética en cascada lateral/superior[span_6](start_span)[span_6](end_span)
+                      // Cascada de líneas verticales luminosas superiores e inferiores[span_8](start_span)[span_8](end_span)
                       for (c in 0 until cols) {
-                          val mag = smoothedMagnitudes[c * 3] * 1.5f
+                          val mag = smoothedMagnitudes[c * 2] * 1.8f
                           val x = c * slotW
                           strokePaint.color = colors[c % colors.size]
-                          strokePaint.strokeWidth = 4f
+                          strokePaint.strokeWidth = 3f
 
-                          // Líneas verticales de matriz luminosa[span_7](start_span)[span_7](end_span)
-                          canvas.drawLine(x, 0f, x, mag * 1.2f, strokePaint)
-                          canvas.drawLine(x, h - mag * 1.2f, x, h, strokePaint)
+                          // Haces de luz superiores tipo cascada digital[span_9](start_span)[span_9](end_span)
+                          canvas.drawLine(x + slotW / 2f, 0f, x + slotW / 2f, h * 0.25f + mag, strokePaint)
+                          
+                          // Haces de luz inferiores simétricos[span_10](start_span)[span_10](end_span)
+                          canvas.drawLine(x + slotW / 2f, h - (h * 0.25f + mag), x + slotW / 2f, h, strokePaint)
 
-                          // Estructura geométrica tipo wireframe[span_8](start_span)[span_8](end_span)
-                          rect.set(x + 4f, mag * 1.2f, x + slotW - 4f, mag * 1.2f + 30f)
-                          canvas.drawRect(rect, strokePaint)
+                          // Estructuras de alambre en bloque (*wireframe*)[span_11](start_span)[span_11](end_span)
+                          if (c % 2 == 0) {
+                              strokePaint.strokeWidth = 2f
+                              rect.set(x + 2f, h * 0.3f, x + slotW - 2f, h * 0.3f + mag * 0.8f)
+                              canvas.drawRect(rect, strokePaint)
+                          }
                       }
 
-                      // Red de celdas cruzadas inferiores[span_9](start_span)[span_9](end_span)
+                      // Estructura arquitectónica central compleja con efecto de perspectiva[span_12](start_span)[span_12](end_span)
+                      val cx = w / 2f; val cy = h / 2f
+                      strokePaint.color = colors[0]
+                      strokePaint.strokeWidth = 4f
+                      canvas.drawRect(cx - w * 0.35f, cy - h * 0.15f, cx + w * 0.35f, cy + h * 0.15f, strokePaint)
+
+                      // Líneas de conexión en diagonal tipo rejilla 3D[span_13](start_span)[span_13](end_span)
                       strokePaint.strokeWidth = 2f
-                      val gridStep = w / 10f
-                      for (i in 0..10) {
-                          val lineX = i * gridStep
-                          canvas.drawLine(lineX, h * 0.7f, lineX + (bassEnergy * 0.5f), h, strokePaint)
+                      val diagStep = w / 8f
+                      for (i in 0..8) {
+                          val lx = i * diagStep
+                          canvas.drawLine(lx, cy - h * 0.15f, lx - (bassEnergy * 0.8f), 0f, strokePaint)
+                          canvas.drawLine(lx, cy + h * 0.15f, lx + (bassEnergy * 0.8f), h, strokePaint)
                       }
                   }
 
