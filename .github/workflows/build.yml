@@ -1,4 +1,4 @@
-name: Compilar PowerSpectrum 30FPS Capped APK
+name: Compilar PowerSpectrum Ultimate 17 Modos APK
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generar estructura del proyecto con 30 FPS Cap
+      - name: Generar estructura del proyecto con nuevos espectros
         run: |
           mkdir -p app/src/main/java/com/ejemplo/espectrowallpaper
           mkdir -p app/src/main/res/xml
@@ -72,8 +72,8 @@ jobs:
                   applicationId = "com.ejemplo.espectrowallpaper"
                   minSdk = 26
                   targetSdk = 34
-                  versionCode = 9
-                  versionName = "3.4"
+                  versionCode = 10
+                  versionName = "3.5"
               }
 
               compileOptions {
@@ -95,7 +95,7 @@ jobs:
           cat << 'EOF' > app/src/main/res/values/strings.xml
           <resources>
               <string name="app_name">PowerSpectrum Ultimate</string>
-              <string name="wallpaper_desc">15 Visualizadores de audio estilo Poweramp a 30 FPS Estables</string>
+              <string name="wallpaper_desc">17 Visualizadores de audio estilo Poweramp a 30 FPS Estables</string>
           </resources>
           EOF
 
@@ -224,7 +224,7 @@ jobs:
                       typeface = Typeface.DEFAULT_BOLD
                   }
                   val subtitle = TextView(this).apply {
-                      text = "15 Efectos Visuales estilo Poweramp (30 FPS Estables). (Doble toque en tu pantalla de inicio para cambiar de estilo al instante)."
+                      text = "17 Efectos Visuales (Incluye estilos Fractal Mandala y Cyber Wireframe). (Doble toque en tu pantalla para cambiar)."
                       textSize = 14f
                       setTextColor(Color.parseColor("#A0AAB8"))
                       setPadding(0, 12, 0, 40)
@@ -232,7 +232,7 @@ jobs:
 
                   container.addView(title)
                   container.addView(subtitle)
-                  container.addView(sectionHeader("1. ELIGE ENTRE LOS 15 EFECTOS"))
+                  container.addView(sectionHeader("1. ELIGE ENTRE LOS 17 EFECTOS"))
 
                   val styles = listOf(
                       0 to "1. Poweramp Classic LED + Picos",
@@ -249,7 +249,9 @@ jobs:
                       11 to "12. Barras Gemelas Espejo Central",
                       12 to "13. Ondas Senoidales Superpuestas",
                       13 to "14. Vúmetro Analógico Dinámico",
-                      14 to "15. Nebulosa de Partículas"
+                      14 to "15. Nebulosa de Partículas",
+                      15 to "16. Fractal Mandala Core (Estilo Imagen 1)",
+                      16 to "17. Cyber Wireframe Waterfall (Estilo Imagen 2)"
                   )
 
                   val styleButtons = mutableListOf<Button>()
@@ -483,7 +485,6 @@ jobs:
                           if (lastFrameTime == 0L) lastFrameTime = frameTimeNanos
                           val elapsed = frameTimeNanos - lastFrameTime
                           
-                          // Limitador estricto a 30 FPS (~33.3ms por cuadro) para evitar caídas de rendimiento
                           if (elapsed >= 33_333_333L) {
                               lastFrameTime = frameTimeNanos
                               updatePhysics()
@@ -501,7 +502,7 @@ jobs:
                           val dy = event.y - lastTapY
                           if (now - lastTapTime < 320L && hypot(dx.toDouble(), dy.toDouble()) < 120) {
                               val prefs = getSharedPreferences("spectrum_prefs", Context.MODE_PRIVATE)
-                              val nextStyle = (prefs.getInt("style", 0) + 1) % 15
+                              val nextStyle = (prefs.getInt("style", 0) + 1) % 17
                               prefs.edit().putInt("style", nextStyle).apply()
                               lastTapTime = 0L
                           } else {
@@ -666,6 +667,8 @@ jobs:
                                   12 -> drawSuperimposedSines(canvas, w, h, colors)
                                   13 -> drawVumeterAnalog(canvas, w, h, colors)
                                   14 -> drawParticleNebula(canvas, w, h, colors)
+                                  15 -> drawFractalMandalaCore(canvas, w, h, colors)
+                                  16 -> drawCyberWireframeWaterfall(canvas, w, h, colors)
                               }
                           }
                       } finally { if (canvas != null) holder.unlockCanvasAndPost(canvas) }
@@ -906,6 +909,69 @@ jobs:
                       for (p in 0 until numParticles) {
                           peakPaint.color = colors[p % colors.size]
                           canvas.drawCircle(particleX[p] * w, particleY[p] * h, particleRadius[p] + (bassEnergy * 0.08f), peakPaint)
+                      }
+                  }
+
+                  // 16. Fractal Mandala Core (Inspirado en la primera imagen[span_2](start_span)[span_2](end_span))
+                  private fun drawFractalMandalaCore(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cx = w / 2f; val cy = h / 2f
+                      val baseR = min(w, h) * 0.22f + (bassEnergy * 0.4f)
+                      strokePaint.shader = null
+
+                      // Dibujar múltiples capas simétricas rotatorias estilo mandala fractal[span_3](start_span)[span_3](end_span)
+                      for (layer in 0 until 5) {
+                          wavePath.reset()
+                          val points = 32
+                          val radius = baseR * (0.5f + layer * 0.3f)
+                          val angleOffset = rotationAngle * (if (layer % 2 == 0) 1f else -1f) * (layer + 1)
+
+                          for (i in 0..points) {
+                              val angle = (i.toFloat() / points) * (2f * PI.toFloat()) + angleOffset
+                              val magMod = smoothedMagnitudes[i % numBands] * 0.15f
+                              val currentR = radius + (if (i % 2 == 0) magMod else -magMod)
+                              val x = cx + cos(angle.toDouble()).toFloat() * currentR
+                              val y = cy + sin(angle.toDouble()).toFloat() * currentR
+                              if (i == 0) wavePath.moveTo(x, y) else wavePath.lineTo(x, y)
+                          }
+                          wavePath.close()
+                          strokePaint.color = colors[layer % colors.size]
+                          strokePaint.strokeWidth = 3f + layer
+                          canvas.drawPath(wavePath, strokePaint)
+                      }
+
+                      // Núcleo brillante central pulsante[span_4](start_span)[span_4](end_span)
+                      glowPaint.shader = RadialGradient(cx, cy, baseR * 0.6f, colors[0], Color.TRANSPARENT, Shader.TileMode.CLAMP)
+                      canvas.drawCircle(cx, cy, baseR * 0.6f, glowPaint)
+                  }
+
+                  // 17. Cyber Wireframe Waterfall (Inspirado en la segunda imagen[span_5](start_span)[span_5](end_span))
+                  private fun drawCyberWireframeWaterfall(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cols = 20
+                      val slotW = w / cols
+                      strokePaint.shader = null
+
+                      // Estructura de alambre cibernética en cascada lateral/superior[span_6](start_span)[span_6](end_span)
+                      for (c in 0 until cols) {
+                          val mag = smoothedMagnitudes[c * 3] * 1.5f
+                          val x = c * slotW
+                          strokePaint.color = colors[c % colors.size]
+                          strokePaint.strokeWidth = 4f
+
+                          // Líneas verticales de matriz luminosa[span_7](start_span)[span_7](end_span)
+                          canvas.drawLine(x, 0f, x, mag * 1.2f, strokePaint)
+                          canvas.drawLine(x, h - mag * 1.2f, x, h, strokePaint)
+
+                          // Estructura geométrica tipo wireframe[span_8](start_span)[span_8](end_span)
+                          rect.set(x + 4f, mag * 1.2f, x + slotW - 4f, mag * 1.2f + 30f)
+                          canvas.drawRect(rect, strokePaint)
+                      }
+
+                      // Red de celdas cruzadas inferiores[span_9](start_span)[span_9](end_span)
+                      strokePaint.strokeWidth = 2f
+                      val gridStep = w / 10f
+                      for (i in 0..10) {
+                          val lineX = i * gridStep
+                          canvas.drawLine(lineX, h * 0.7f, lineX + (bassEnergy * 0.5f), h, strokePaint)
                       }
                   }
 
