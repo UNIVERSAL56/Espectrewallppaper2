@@ -1,4 +1,4 @@
-name: Compilar PowerSpectrum APK Corregido
+name: Compilar PowerSpectrum APK Optimizado
 
 on:
   push:
@@ -72,8 +72,8 @@ jobs:
                   applicationId = "com.ejemplo.espectrowallpaper"
                   minSdk = 26
                   targetSdk = 34
-                  versionCode = 3
-                  versionName = "2.1"
+                  versionCode = 4
+                  versionName = "2.2"
               }
 
               compileOptions {
@@ -371,10 +371,9 @@ jobs:
           import android.graphics.RectF
           import android.graphics.Shader
           import android.media.audiofx.Visualizer
-          import android.os.Handler
-          import android.os.Looper
           import android.os.SystemClock
           import android.service.wallpaper.WallpaperService
+          import android.view.Choreographer
           import android.view.MotionEvent
           import android.view.SurfaceHolder
           import kotlin.math.PI
@@ -390,10 +389,10 @@ jobs:
           class AudioSpectrumWallpaperService : WallpaperService() {
               override fun onCreateEngine(): Engine = PowerSpectrumEngine()
 
-              inner class PowerSpectrumEngine : Engine() {
+              inner class PowerSpectrumEngine : Engine(), Choreographer.FrameCallback {
                   private var visualizer: Visualizer? = null
-                  private val handler = Handler(Looper.getMainLooper())
                   private var isVisible = false
+                  private var isRendering = false
 
                   private val numBands = 64
                   private val targetMagnitudes = FloatArray(numBands)
@@ -427,26 +426,42 @@ jobs:
                   private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
                   private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
 
-                  private val renderRunnable = object : Runnable {
-                      override fun run() {
-                          if (isVisible) {
-                              updatePhysics()
-                              drawFrame()
-                              handler.postDelayed(this, 16L)
-                          }
-                      }
-                  }
-
                   override fun onVisibilityChanged(visible: Boolean) {
                       super.onVisibilityChanged(visible)
                       isVisible = visible
                       if (visible) {
                           startVisualizer()
-                          handler.removeCallbacks(renderRunnable)
-                          handler.post(renderRunnable)
+                          startRendering()
                       } else {
-                          handler.removeCallbacks(renderRunnable)
+                          stopRendering()
                           stopVisualizer()
+                      }
+                  }
+
+                  override fun onSurfaceRedrawNeeded(holder: SurfaceHolder?) {
+                      super.onSurfaceRedrawNeeded(holder)
+                      if (isVisible) {
+                          restartVisualizer()
+                      }
+                  }
+
+                  private fun startRendering() {
+                      if (!isRendering) {
+                          isRendering = true
+                          Choreographer.getInstance().postFrameCallback(this)
+                      }
+                  }
+
+                  private fun stopRendering() {
+                      isRendering = false
+                      Choreographer.getInstance().removeFrameCallback(this)
+                  }
+
+                  override fun doFrame(frameTimeNanos: Long) {
+                      if (isVisible && isRendering) {
+                          updatePhysics()
+                          drawFrame()
+                          Choreographer.getInstance().postFrameCallback(this)
                       }
                   }
 
@@ -519,14 +534,14 @@ jobs:
                           targetMagnitudes[i] = (db * 15f).coerceAtLeast(6f)
                           activeSignal += db
                       }
-                      if (activeSignal > 2f) lastAudioTimestamp = SystemClock.elapsedRealtime()
+                      if (activeSignal > 1f) lastAudioTimestamp = SystemClock.elapsedRealtime()
                   }
 
                   private fun updatePhysics() {
                       val now = SystemClock.elapsedRealtime()
 
-                      // Watchdog: si pasan más de 3 segundos sin paquetes FFT, reinicia el visualizer automáticamente
-                      if (now - lastFftPacketTime > 3000L) {
+                      // Watchdog mejorado: reinicia el canal de audio si se estanca o pierde el enlace de permisos
+                      if (now - lastFftPacketTime > 2500L) {
                           restartVisualizer()
                           lastFftPacketTime = now
                       }
@@ -538,18 +553,18 @@ jobs:
 
                       for (i in 0 until numBands) {
                           val target = if (idleMode) (sin(wavePhase + i * 0.2f) * 18f + 24f).coerceAtLeast(8f) else targetMagnitudes[i]
-                          smoothedMagnitudes[i] = if (target > smoothedMagnitudes[i]) smoothedMagnitudes[i] + (target - smoothedMagnitudes[i]) * 0.55f else max(8f, smoothedMagnitudes[i] * 0.89f)
+                          smoothedMagnitudes[i] = if (target > smoothedMagnitudes[i]) smoothedMagnitudes[i] + (target - smoothedMagnitudes[i]) * 0.6f else max(8f, smoothedMagnitudes[i] * 0.85f)
 
                           if (smoothedMagnitudes[i] >= peakHeights[i]) {
                               peakHeights[i] = smoothedMagnitudes[i]
                               peakVelocities[i] = 0f
                           } else {
-                              peakVelocities[i] += 0.45f
+                              peakVelocities[i] += 0.4f
                               peakHeights[i] = max(smoothedMagnitudes[i], peakHeights[i] - peakVelocities[i])
                           }
                           if (i < 10) bassSum += smoothedMagnitudes[i]
                       }
-                      bassEnergy += ((bassSum / 10f) - bassEnergy) * 0.35f
+                      bassEnergy += ((bassSum / 10f) - bassEnergy) * 0.4f
                       val speedMultiplier = 1f + (bassEnergy / 120f)
                       for (p in 0 until numParticles) {
                           particleY[p] -= particleSpeed[p] * speedMultiplier
@@ -710,7 +725,7 @@ jobs:
 
                   override fun onDestroy() {
                       super.onDestroy()
-                      handler.removeCallbacks(renderRunnable)
+                      stopRendering()
                       stopVisualizer()
                   }
               }
