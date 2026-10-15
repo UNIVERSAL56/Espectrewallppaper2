@@ -1,0 +1,484 @@
+name: Generar Proyecto Poweramp y Compilar APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Generar estructura y codigo fuente Poweramp Style
+        run: |
+          mkdir -p app/src/main/java/com/ejemplo/espectrowallpaper
+          mkdir -p app/src/main/res/xml
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/drawable
+
+          cat << 'EOF' > gradle.properties
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          kotlin.code.style=official
+          android.nonTransitiveRClass=true
+          EOF
+
+          cat << 'EOF' > settings.gradle.kts
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "EspectroWallpaper"
+          include(":app")
+          EOF
+
+          cat << 'EOF' > build.gradle.kts
+          plugins {
+              id("com.android.application") version "8.4.0" apply false
+              id("org.jetbrains.kotlin.android") version "1.9.23" apply false
+          }
+          EOF
+
+          cat << 'EOF' > app/build.gradle.kts
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+          }
+
+          android {
+              namespace = "com.ejemplo.espectrowallpaper"
+              compileSdk = 34
+
+              defaultConfig {
+                  applicationId = "com.ejemplo.espectrowallpaper"
+                  minSdk = 26
+                  targetSdk = 34
+                  versionCode = 2
+                  versionName = "2.0"
+              }
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+
+          dependencies {
+              implementation("androidx.core:core-ktx:1.12.0")
+              implementation("androidx.appcompat:appcompat:1.6.1")
+              implementation("androidx.activity:activity-ktx:1.8.2")
+          }
+          EOF
+
+          cat << 'EOF' > app/src/main/res/values/strings.xml
+          <resources>
+              <string name="app_name">PowerSpectrum Wallpaper</string>
+              <string name="wallpaper_desc">Visualizadores de audio estilo Poweramp a 60 FPS</string>
+          </resources>
+          EOF
+
+          cat << 'EOF' > app/src/main/res/drawable/ic_launcher.xml
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+              <path
+                  android:fillColor="#07080D"
+                  android:pathData="M0,0h108v108h-108z"/>
+              <path
+                  android:fillColor="#FF007F"
+                  android:pathData="M18,64h6v20h-6zM28,48h6v36h-6zM38,30h6v54h-6z"/>
+              <path
+                  android:fillColor="#00F5D4"
+                  android:pathData="M48,18h6v66h-6zM58,28h6v56h-6zM68,42h6v42h-6zM78,54h6v30h-6zM88,66h6v18h-6z"/>
+          </vector>
+          EOF
+
+          cat << 'EOF' > app/src/main/res/xml/wallpaper.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
+              android:description="@string/wallpaper_desc"
+              android:thumbnail="@drawable/ic_launcher"
+              android:settingsActivity="com.ejemplo.espectrowallpaper.MainActivity" />
+          EOF
+
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+              <uses-feature
+                  android:name="android.software.live_wallpaper"
+                  android:required="true" />
+
+              <application
+                  android:allowBackup="true"
+                  android:icon="@drawable/ic_launcher"
+                  android:label="@string/app_name"
+                  android:supportsRtl="true"
+                  android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+                  <service
+                      android:name=".AudioSpectrumWallpaperService"
+                      android:enabled="true"
+                      android:exported="true"
+                      android:label="@string/app_name"
+                      android:permission="android.permission.BIND_WALLPAPER">
+                      <intent-filter>
+                          <action android:name="android.service.wallpaper.WallpaperService" />
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.service.wallpaper"
+                          android:resource="@xml/wallpaper" />
+                  </service>
+
+              </application>
+          </manifest>
+          EOF
+
+          cat << 'EOF' > app/src/main/java/com/ejemplo/espectrowallpaper/MainActivity.kt
+          package com.ejemplo.espectrowallpaper
+
+          import android.Manifest
+          import android.app.WallpaperManager
+          import android.content.ComponentName
+          import android.content.Context
+          import android.content.Intent
+          import android.content.pm.PackageManager
+          import android.graphics.Color
+          import android.graphics.Typeface
+          import android.graphics.drawable.GradientDrawable
+          import android.os.Bundle
+          import android.view.Gravity
+          import android.widget.Button
+          import android.widget.LinearLayout
+          import android.widget.ScrollView
+          import android.widget.TextView
+          import android.widget.Toast
+          import androidx.activity.result.contract.ActivityResultContracts
+          import androidx.appcompat.app.AppCompatActivity
+          import androidx.core.content.ContextCompat
+
+          class MainActivity : AppCompatActivity() {
+
+              private val requestPermissionLauncher = registerForActivityResult(
+                  ActivityResultContracts.RequestPermission()
+              ) { isGranted: Boolean ->
+                  if (isGranted) {
+                      openWallpaperPicker()
+                  } else {
+                      Toast.makeText(
+                          this,
+                          "Se necesita el permiso de audio para capturar la música.",
+                          Toast.LENGTH_LONG
+                      ).show()
+                  }
+              }
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+
+                  val prefs = getSharedPreferences("spectrum_prefs", Context.MODE_PRIVATE)
+
+                  val scrollView = ScrollView(this).apply {
+                      setBackgroundColor(Color.parseColor("#08090F"))
+                  }
+
+                  val container = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(48, 64, 48, 64)
+                  }
+
+                  val title = TextView(this).apply {
+                      text = "PowerSpectrum"
+                      textSize = 28f
+                      setTextColor(Color.parseColor("#00F5D4"))
+                      typeface = Typeface.DEFAULT_BOLD
+                  }
+
+                  val subtitle = TextView(this).apply {
+                      text = "Visualizadores estilo Poweramp (Tip: también puedes hacer doble toque en tu fondo de pantalla para cambiar de estilo al instante)."
+                      textSize = 14f
+                      setTextColor(Color.parseColor("#A0AAB8"))
+                      setPadding(0, 12, 0, 40)
+                  }
+
+                  container.addView(title)
+                  container.addView(subtitle)
+
+                  // Sección de estilos de visualizador
+                  container.addView(sectionHeader("1. ELIGE EL ESTILO DE ESPECTRO"))
+
+                  val styles = listOf(
+                      0 to "Barras LED + Picos y Reflejo (Clásico Poweramp)",
+                      1 to "Reactor Radial 360° (Círculo Bass-Pulse)",
+                      2 to "Ondas Líquidas Neón (Estilo Milkdrop)",
+                      3 to "Horizonte Espejo + Partículas de Bajo",
+                      4 to "Ecualizador de Bloques Digitales Hi-Fi"
+                  )
+
+                  val styleButtons = mutableListOf<Button>()
+                  val currentStyle = prefs.getInt("style", 0)
+
+                  styles.forEach { (id, name) ->
+                      val btn = createOptionButton(name, id == currentStyle)
+                      btn.setOnClickListener {
+                          prefs.edit().putInt("style", id).apply()
+                          styleButtons.forEachIndexed { index, b ->
+                              updateButtonStyle(b, index == id)
+                          }
+                          Toast.makeText(this, "Estilo activado: $name", Toast.LENGTH_SHORT).show()
+                      }
+                      styleButtons.add(btn)
+                      container.addView(btn)
+                  }
+
+                  // Sección de paletas de color
+                  container.addView(sectionHeader("2. ELIGE LA PALETA DE COLORES"))
+
+                  val palettes = listOf(
+                      0 to "Cyberpunk Neón (Cian / Morado / Magenta)",
+                      1 to "Fuego Bass (Amarillo / Naranja / Rojo)",
+                      2 to "Matrix Digital (Lima / Esmeralda / Oscuro)",
+                      3 to "Océano Profundo (Celeste / Azul / Índigo)",
+                      4 to "Oro & Platino (Blanco / Dorado / Ámbar)"
+                  )
+
+                  val paletteButtons = mutableListOf<Button>()
+                  val currentPalette = prefs.getInt("palette", 0)
+
+                  palettes.forEach { (id, name) ->
+                      val btn = createOptionButton(name, id == currentPalette)
+                      btn.setOnClickListener {
+                          prefs.edit().putInt("palette", id).apply()
+                          paletteButtons.forEachIndexed { index, b ->
+                              updateButtonStyle(b, index == id)
+                          }
+                          Toast.makeText(this, "Paleta activada: $name", Toast.LENGTH_SHORT).show()
+                      }
+                      paletteButtons.add(btn)
+                      container.addView(btn)
+                  }
+
+                  // Botón principal de aplicar fondo
+                  val applyBtn = Button(this).apply {
+                      text = "APLICAR FONDO DE PANTALLA"
+                      textSize = 16f
+                      typeface = Typeface.DEFAULT_BOLD
+                      setTextColor(Color.parseColor("#08090F"))
+                      background = GradientDrawable().apply {
+                          cornerRadius = 32f
+                          setColor(Color.parseColor("#00F5D4"))
+                      }
+                      val params = LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT,
+                          LinearLayout.LayoutParams.WRAP_CONTENT
+                      ).apply {
+                          topMargin = 56
+                      }
+                      layoutParams = params
+                      setPadding(32, 36, 32, 36)
+                      setOnClickListener { checkPermissionAndLaunch() }
+                  }
+
+                  container.addView(applyBtn)
+                  scrollView.addView(container)
+                  setContentView(scrollView)
+              }
+
+              private fun sectionHeader(text: String): TextView {
+                  return TextView(this).apply {
+                      this.text = text
+                      textSize = 15f
+                      typeface = Typeface.DEFAULT_BOLD
+                      setTextColor(Color.WHITE)
+                      setPadding(0, 32, 0, 16)
+                  }
+              }
+
+              private fun createOptionButton(label: String, selected: Boolean): Button {
+                  return Button(this).apply {
+                      text = label
+                      isAllCaps = false
+                      textSize = 14f
+                      gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                      setPadding(40, 28, 40, 28)
+                      val params = LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT,
+                          LinearLayout.LayoutParams.WRAP_CONTENT
+                      ).apply {
+                          bottomMargin = 16
+                      }
+                      layoutParams = params
+                      updateButtonStyle(this, selected)
+                  }
+              }
+
+              private fun updateButtonStyle(button: Button, selected: Boolean) {
+                  val drawable = GradientDrawable().apply {
+                      cornerRadius = 24f
+                      if (selected) {
+                          setColor(Color.parseColor("#1E2235"))
+                          setStroke(4, Color.parseColor("#00F5D4"))
+                      } else {
+                          setColor(Color.parseColor("#121420"))
+                          setStroke(2, Color.parseColor("#262B40"))
+                      }
+                  }
+                  button.background = drawable
+                  button.setTextColor(if (selected) Color.parseColor("#00F5D4") else Color.WHITE)
+              }
+
+              private fun checkPermissionAndLaunch() {
+                  if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                      == PackageManager.PERMISSION_GRANTED
+                  ) {
+                      openWallpaperPicker()
+                  } else {
+                      requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                  }
+              }
+
+              private fun openWallpaperPicker() {
+                  val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
+                      putExtra(
+                          WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                          ComponentName(this@MainActivity, AudioSpectrumWallpaperService::class.java)
+                      )
+                  }
+                  startActivity(intent)
+              }
+          }
+          EOF
+
+          cat << 'EOF' > app/src/main/java/com/ejemplo/espectrowallpaper/AudioSpectrumWallpaperService.kt
+          package com.ejemplo.espectrowallpaper
+
+          import android.content.Context
+          import android.graphics.Canvas
+          import android.graphics.Color
+          import android.graphics.LinearGradient
+          import android.graphics.Paint
+          import android.graphics.Path
+          import android.graphics.RadialGradient
+          import android.graphics.RectF
+          import android.graphics.Shader
+          import android.media.audiofx.Visualizer
+          import android.os.Handler
+          import android.os.Looper
+          import android.os.SystemClock
+          import android.service.wallpaper.WallpaperService
+          import android.view.MotionEvent
+          import android.view.SurfaceHolder
+          import kotlin.math.PI
+          import kotlin.math.cos
+          import kotlin.math.hypot
+          import kotlin.math.log10
+          import kotlin.math.max
+          import kotlin.math.min
+          import kotlin.math.pow
+          import kotlin.math.sin
+          import kotlin.random.Random
+
+          class AudioSpectrumWallpaperService : WallpaperService() {
+
+              override fun onCreateEngine(): Engine {
+                  return PowerSpectrumEngine()
+              }
+
+              inner class PowerSpectrumEngine : Engine() {
+                  private var visualizer: Visualizer? = null
+                  private val handler = Handler(Looper.getMainLooper())
+                  private var isVisible = false
+
+                  private val numBands = 64
+                  private val targetMagnitudes = FloatArray(numBands)
+                  private val smoothedMagnitudes = FloatArray(numBands) { 8f }
+                  private val peakHeights = FloatArray(numBands) { 10f }
+                  private val peakVelocities = FloatArray(numBands) { 0f }
+
+                  private var bassEnergy = 0f
+                  private var rotationAngle = 0f
+                  private var wavePhase = 0f
+                  private var lastAudioTimestamp = 0L
+
+                  // Detector de doble toque para cambiar de visualizador
+                  private var lastTapTime = 0L
+                  private var lastTapX = 0f
+                  private var lastTapY = 0f
+
+                  // Partículas reactivas
+                  private val numParticles = 35
+                  private val particleX = FloatArray(numParticles) { Random.nextFloat() }
+                  private val particleY = FloatArray(numParticles) { Random.nextFloat() }
+                  private val particleSpeed = FloatArray(numParticles) { Random.nextFloat() * 0.004f + 0.001f }
+                  private val particleRadius = FloatArray(numParticles) { Random.nextFloat() * 5f + 2f }
+
+                  private val rect = RectF()
+                  private val wavePath = Path()
+
+                  private val bgPaint = Paint().apply {
+                      color = Color.parseColor("#07080D")
+                  }
+                  private val mainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                      style = Paint.Style.FILL
+                  }
+                  private val reflectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                      style = Paint.Style.FILL
+                  }
+                  private val peakPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                      style = Paint.Style.FILL
+                  }
+                  private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                      style = Paint.Style.STROKE
+                      strokeCap = Paint.Cap.ROUND
+                  }
+                  private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                      style = Paint.Style.FILL
+                  }
+
+                  private val renderRunnable = object : Runnable {
+                      override fun run() {
+                          if (isVisible) {
+                              updatePhysics()
+                              drawFrame()
+                              handler.postDelayed(this, 16L) // ~60 FPS constantes
+                          }
+                      }
+                  }
+
+                  override fun onVisibilityChanged(visible: Boolean) {
+                      super.onVisibilityChanged(visible)
+                      isVisible = visible
+                      
