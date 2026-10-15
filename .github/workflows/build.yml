@@ -1,12 +1,9 @@
-name: Generar Proyecto y Compilar APK
+name: Compilar PowerSpectrum APK
 
 on:
   push:
     branches: [ "main", "master" ]
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -15,7 +12,13 @@ jobs:
       - name: Descargar repositorio
         uses: actions/checkout@v4
 
-      - name: Generar estructura y codigo fuente Poweramp Style
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Generar estructura completa del proyecto
         run: |
           mkdir -p app/src/main/java/com/ejemplo/espectrowallpaper
           mkdir -p app/src/main/res/xml
@@ -92,7 +95,7 @@ jobs:
           cat << 'EOF' > app/src/main/res/values/strings.xml
           <resources>
               <string name="app_name">PowerSpectrum Wallpaper</string>
-              <string name="wallpaper_desc">Visualizadores estilo Poweramp a 60 FPS</string>
+              <string name="wallpaper_desc">Visualizadores de audio estilo Poweramp a 60 FPS</string>
           </resources>
           EOF
 
@@ -198,23 +201,17 @@ jobs:
                   if (isGranted) {
                       openWallpaperPicker()
                   } else {
-                      Toast.makeText(
-                          this,
-                          "Se necesita el permiso de audio para capturar la música.",
-                          Toast.LENGTH_LONG
-                      ).show()
+                      Toast.makeText(this, "Se necesita permiso de audio.", Toast.LENGTH_LONG).show()
                   }
               }
 
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
-
                   val prefs = getSharedPreferences("spectrum_prefs", Context.MODE_PRIVATE)
 
                   val scrollView = ScrollView(this).apply {
                       setBackgroundColor(Color.parseColor("#08090F"))
                   }
-
                   val container = LinearLayout(this).apply {
                       orientation = LinearLayout.VERTICAL
                       setPadding(48, 64, 48, 64)
@@ -226,9 +223,8 @@ jobs:
                       setTextColor(Color.parseColor("#00F5D4"))
                       typeface = Typeface.DEFAULT_BOLD
                   }
-
                   val subtitle = TextView(this).apply {
-                      text = "Visualizadores estilo Poweramp (Tip: también puedes hacer doble toque en tu fondo de pantalla para cambiar de estilo al instante)."
+                      text = "Visualizadores estilo Poweramp. (Doble toque en tu fondo de pantalla para cambiar de estilo al instante)."
                       textSize = 14f
                       setTextColor(Color.parseColor("#A0AAB8"))
                       setPadding(0, 12, 0, 40)
@@ -236,15 +232,14 @@ jobs:
 
                   container.addView(title)
                   container.addView(subtitle)
-
-                  container.addView(sectionHeader("1. ELIGE EL ESTILO DE ESPECTRO"))
+                  container.addView(sectionHeader("1. ESTILO DE ESPECTRO"))
 
                   val styles = listOf(
-                      0 to "Barras LED + Picos y Reflejo (Clásico Poweramp)",
-                      1 to "Reactor Radial 360° (Círculo Bass-Pulse)",
-                      2 to "Ondas Líquidas Neón (Estilo Milkdrop)",
-                      3 to "Horizonte Espejo + Partículas de Bajo",
-                      4 to "Ecualizador de Bloques Digitales Hi-Fi"
+                      0 to "Barras LED + Picos y Reflejo",
+                      1 to "Reactor Radial 360° (Bass Orb)",
+                      2 to "Ondas Líquidas Neón (Milkdrop)",
+                      3 to "Horizonte Espejo + Partículas",
+                      4 to "Ecualizador de Bloques Hi-Fi"
                   )
 
                   val styleButtons = mutableListOf<Button>()
@@ -254,23 +249,20 @@ jobs:
                       val btn = createOptionButton(name, id == currentStyle)
                       btn.setOnClickListener {
                           prefs.edit().putInt("style", id).apply()
-                          styleButtons.forEachIndexed { index, b ->
-                              updateButtonStyle(b, index == id)
-                          }
-                          Toast.makeText(this, "Estilo activado: $name", Toast.LENGTH_SHORT).show()
+                          styleButtons.forEachIndexed { index, b -> updateButtonStyle(b, index == id) }
+                          Toast.makeText(this, "Estilo: $name", Toast.LENGTH_SHORT).show()
                       }
                       styleButtons.add(btn)
                       container.addView(btn)
                   }
 
-                  container.addView(sectionHeader("2. ELIGE LA PALETA DE COLORES"))
-
+                  container.addView(sectionHeader("2. PALETA DE COLORES"))
                   val palettes = listOf(
-                      0 to "Cyberpunk Neón (Cian / Morado / Magenta)",
-                      1 to "Fuego Bass (Amarillo / Naranja / Rojo)",
-                      2 to "Matrix Digital (Lima / Esmeralda / Oscuro)",
-                      3 to "Océano Profundo (Celeste / Azul / Índigo)",
-                      4 to "Oro & Platino (Blanco / Dorado / Ámbar)"
+                      0 to "Cyberpunk Neón",
+                      1 to "Fuego Bass",
+                      2 to "Matrix Digital",
+                      3 to "Océano Profundo",
+                      4 to "Oro & Platino"
                   )
 
                   val paletteButtons = mutableListOf<Button>()
@@ -280,10 +272,8 @@ jobs:
                       val btn = createOptionButton(name, id == currentPalette)
                       btn.setOnClickListener {
                           prefs.edit().putInt("palette", id).apply()
-                          paletteButtons.forEachIndexed { index, b ->
-                              updateButtonStyle(b, index == id)
-                          }
-                          Toast.makeText(this, "Paleta activada: $name", Toast.LENGTH_SHORT).show()
+                          paletteButtons.forEachIndexed { index, b -> updateButtonStyle(b, index == id) }
+                          Toast.makeText(this, "Paleta: $name", Toast.LENGTH_SHORT).show()
                       }
                       paletteButtons.add(btn)
                       container.addView(btn)
@@ -298,13 +288,10 @@ jobs:
                           cornerRadius = 32f
                           setColor(Color.parseColor("#00F5D4"))
                       }
-                      val params = LinearLayout.LayoutParams(
+                      layoutParams = LinearLayout.LayoutParams(
                           LinearLayout.LayoutParams.MATCH_PARENT,
                           LinearLayout.LayoutParams.WRAP_CONTENT
-                      ).apply {
-                          topMargin = 56
-                      }
-                      layoutParams = params
+                      ).apply { topMargin = 56 }
                       setPadding(32, 36, 32, 36)
                       setOnClickListener { checkPermissionAndLaunch() }
                   }
@@ -331,13 +318,10 @@ jobs:
                       textSize = 14f
                       gravity = Gravity.START or Gravity.CENTER_VERTICAL
                       setPadding(40, 28, 40, 28)
-                      val params = LinearLayout.LayoutParams(
+                      layoutParams = LinearLayout.LayoutParams(
                           LinearLayout.LayoutParams.MATCH_PARENT,
                           LinearLayout.LayoutParams.WRAP_CONTENT
-                      ).apply {
-                          bottomMargin = 16
-                      }
-                      layoutParams = params
+                      ).apply { bottomMargin = 16 }
                       updateButtonStyle(this, selected)
                   }
               }
@@ -358,9 +342,7 @@ jobs:
               }
 
               private fun checkPermissionAndLaunch() {
-                  if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                      == PackageManager.PERMISSION_GRANTED
-                  ) {
+                  if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                       openWallpaperPicker()
                   } else {
                       requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
@@ -369,10 +351,7 @@ jobs:
 
               private fun openWallpaperPicker() {
                   val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
-                      putExtra(
-                          WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                          ComponentName(this@MainActivity, AudioSpectrumWallpaperService::class.java)
-                      )
+                      putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, ComponentName(this@MainActivity, AudioSpectrumWallpaperService::class.java))
                   }
                   startActivity(intent)
               }
@@ -409,10 +388,7 @@ jobs:
           import kotlin.random.Random
 
           class AudioSpectrumWallpaperService : WallpaperService() {
-
-              override fun onCreateEngine(): Engine {
-                  return PowerSpectrumEngine()
-              }
+              override fun onCreateEngine(): Engine = PowerSpectrumEngine()
 
               inner class PowerSpectrumEngine : Engine() {
                   private var visualizer: Visualizer? = null
@@ -443,25 +419,12 @@ jobs:
                   private val rect = RectF()
                   private val wavePath = Path()
 
-                  private val bgPaint = Paint().apply {
-                      color = Color.parseColor("#07080D")
-                  }
-                  private val mainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                      style = Paint.Style.FILL
-                  }
-                  private val reflectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                      style = Paint.Style.FILL
-                  }
-                  private val peakPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                      style = Paint.Style.FILL
-                  }
-                  private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                      style = Paint.Style.STROKE
-                      strokeCap = Paint.Cap.ROUND
-                  }
-                  private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                      style = Paint.Style.FILL
-                  }
+                  private val bgPaint = Paint().apply { color = Color.parseColor("#07080D") }
+                  private val mainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+                  private val reflectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+                  private val peakPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+                  private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
+                  private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
 
                   private val renderRunnable = object : Runnable {
                       override fun run() {
@@ -482,4 +445,270 @@ jobs:
                           handler.post(renderRunnable)
                       } else {
                           handler.removeCallbacks(renderRunnable)
-                          stopVisualiz
+                          stopVisualizer()
+                      }
+                  }
+
+                  override fun onTouchEvent(event: MotionEvent?) {
+                      super.onTouchEvent(event)
+                      if (event?.action == MotionEvent.ACTION_DOWN) {
+                          val now = SystemClock.elapsedRealtime()
+                          val dx = event.x - lastTapX
+                          val dy = event.y - lastTapY
+                          if (now - lastTapTime < 320L && hypot(dx.toDouble(), dy.toDouble()) < 120) {
+                              val prefs = getSharedPreferences("spectrum_prefs", Context.MODE_PRIVATE)
+                              val nextStyle = (prefs.getInt("style", 0) + 1) % 5
+                              prefs.edit().putInt("style", nextStyle).apply()
+                              lastTapTime = 0L
+                          } else {
+                              lastTapTime = now
+                              lastTapX = event.x
+                              lastTapY = event.y
+                          }
+                      }
+                  }
+
+                  private fun startVisualizer() {
+                      if (visualizer != null) return
+                      try {
+                          visualizer = Visualizer(0).apply {
+                              captureSize = Visualizer.getCaptureSizeRange()[1]
+                              setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
+                                  override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
+                                  override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
+                                      fft?.let { parseFftLogarithmic(it) }
+                                  }
+                              }, Visualizer.getMaxCaptureRate(), false, true)
+                              enabled = true
+                          }
+                      } catch (e: Exception) { e.printStackTrace() }
+                  }
+
+                  private fun stopVisualizer() {
+                      visualizer?.apply { enabled = false; release() }
+                      visualizer = null
+                  }
+
+                  private fun parseFftLogarithmic(fft: ByteArray) {
+                      val maxBins = (fft.size / 2) - 1
+                      if (maxBins <= 2) return
+                      var activeSignal = 0f
+                      for (i in 0 until numBands) {
+                          val ratioStart = (i.toDouble() / numBands).pow(1.75)
+                          val ratioEnd = ((i + 1).toDouble() / numBands).pow(1.75)
+                          val startBin = (1 + (ratioStart * (maxBins - 1)).toInt()).coerceIn(1, maxBins - 1)
+                          val endBin = max(startBin + 1, (1 + (ratioEnd * (maxBins - 1)).toInt()).coerceIn(1, maxBins))
+                          var sumMag = 0f
+                          for (bin in startBin until endBin) {
+                              val rfk = fft[2 * bin].toInt()
+                              val ifk = fft[2 * bin + 1].toInt()
+                              sumMag += hypot(rfk.toDouble(), ifk.toDouble()).toFloat()
+                          }
+                          val avgMag = sumMag / (endBin - startBin)
+                          val freqBoost = 1f + (i.toFloat() / numBands) * 0.9f
+                          val db = if (avgMag > 1f) 20f * log10(avgMag.toDouble()).toFloat() * freqBoost else 0f
+                          targetMagnitudes[i] = (db * 15f).coerceAtLeast(6f)
+                          activeSignal += db
+                      }
+                      if (activeSignal > 15f) lastAudioTimestamp = SystemClock.elapsedRealtime()
+                  }
+
+                  private fun updatePhysics() {
+                      val now = SystemClock.elapsedRealtime()
+                      val idleMode = (now - lastAudioTimestamp) > 1500L
+                      wavePhase += 0.07f
+                      rotationAngle = (rotationAngle + 0.35f) % 360f
+                      var bassSum = 0f
+
+                      for (i in 0 until numBands) {
+                          val target = if (idleMode) (sin(wavePhase + i * 0.2f) * 18f + 24f).coerceAtLeast(8f) else targetMagnitudes[i]
+                          smoothedMagnitudes[i] = if (target > smoothedMagnitudes[i]) smoothedMagnitudes[i] + (target - smoothedMagnitudes[i]) * 0.55f else max(8f, smoothedMagnitudes[i] * 0.89f)
+
+                          if (smoothedMagnitudes[i] >= peakHeights[i]) {
+                              peakHeights[i] = smoothedMagnitudes[i]
+                              peakVelocities[i] = 0f
+                          } else {
+                              peakVelocities[i] += 0.45f
+                              peakHeights[i] = max(smoothedMagnitudes[i], peakHeights[i] - peakVelocities[i])
+                          }
+                          if (i < 10) bassSum += smoothedMagnitudes[i]
+                      }
+                      bassEnergy += ((bassSum / 10f) - bassEnergy) * 0.35f
+                      val speedMultiplier = 1f + (bassEnergy / 120f)
+                      for (p in 0 until numParticles) {
+                          particleY[p] -= particleSpeed[p] * speedMultiplier
+                          if (particleY[p] < 0f) { particleY[p] = 1f; particleX[p] = Random.nextFloat() }
+                      }
+                  }
+
+                  private fun getPaletteColors(paletteId: Int): IntArray {
+                      return when (paletteId) {
+                          1 -> intArrayOf(Color.parseColor("#FFEA00"), Color.parseColor("#FF6D00"), Color.parseColor("#D50000"))
+                          2 -> intArrayOf(Color.parseColor("#CCFF90"), Color.parseColor("#00E676"), Color.parseColor("#004D40"))
+                          3 -> intArrayOf(Color.parseColor("#80D8FF"), Color.parseColor("#0091EA"), Color.parseColor("#304FFE"))
+                          4 -> intArrayOf(Color.parseColor("#FFFFFF"), Color.parseColor("#FFD740"), Color.parseColor("#FF6F00"))
+                          else -> intArrayOf(Color.parseColor("#00F5D4"), Color.parseColor("#7B2CBF"), Color.parseColor("#FF007F"))
+                      }
+                  }
+
+                  private fun drawFrame() {
+                      val holder: SurfaceHolder = surfaceHolder
+                      var canvas: Canvas? = null
+                      try {
+                          canvas = holder.lockCanvas()
+                          if (canvas != null) {
+                              val w = canvas.width.toFloat()
+                              val h = canvas.height.toFloat()
+                              val prefs = getSharedPreferences("spectrum_prefs", Context.MODE_PRIVATE)
+                              val style = prefs.getInt("style", 0)
+                              val paletteId = prefs.getInt("palette", 0)
+                              val colors = getPaletteColors(paletteId)
+
+                              canvas.drawRect(0f, 0f, w, h, bgPaint)
+                              drawBassAura(canvas, w, h, colors)
+
+                              when (style) {
+                                  0 -> drawPowerampClassicLED(canvas, w, h, colors)
+                                  1 -> drawRadialBassReactor(canvas, w, h, colors)
+                                  2 -> drawMilkdropLiquidWaves(canvas, w, h, colors)
+                                  3 -> drawMirrorHorizonWithParticles(canvas, w, h, colors)
+                                  4 -> drawHiFiSegmentedBlocks(canvas, w, h, colors)
+                              }
+                          }
+                      } finally { if (canvas != null) holder.unlockCanvasAndPost(canvas) }
+                  }
+
+                  private fun drawBassAura(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val radius = (w * 0.45f) + (bassEnergy * 1.4f)
+                      glowPaint.shader = RadialGradient(w / 2f, h / 2f, radius.coerceAtLeast(10f), Color.argb(42, Color.red(colors[1]), Color.green(colors[1]), Color.blue(colors[1])), Color.TRANSPARENT, Shader.TileMode.CLAMP)
+                      canvas.drawCircle(w / 2f, h / 2f, radius, glowPaint)
+                  }
+
+                  private fun drawPowerampClassicLED(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val baseLine = h * 0.74f; val maxBarHeight = h * 0.50f
+                      val slotWidth = w / numBands; val barWidth = slotWidth * 0.68f; val gap = slotWidth * 0.32f
+                      mainPaint.shader = LinearGradient(0f, baseLine - maxBarHeight, 0f, baseLine, colors, null, Shader.TileMode.CLAMP)
+                      reflectionPaint.shader = LinearGradient(0f, baseLine, 0f, baseLine + maxBarHeight * 0.35f, intArrayOf(Color.argb(90, Color.red(colors[2]), Color.green(colors[2]), Color.blue(colors[2])), Color.TRANSPARENT), null, Shader.TileMode.CLAMP)
+                      peakPaint.color = colors[0]
+
+                      for (i in 0 until numBands) {
+                          val bh = min(smoothedMagnitudes[i] * 1.15f, maxBarHeight)
+                          val ph = min(peakHeights[i] * 1.15f, maxBarHeight + 18f)
+                          val left = i * slotWidth + gap / 2f; val right = left + barWidth
+                          rect.set(left, baseLine - bh, right, baseLine); canvas.drawRoundRect(rect, 8f, 8f, mainPaint)
+                          val peakTop = baseLine - ph - 10f
+                          rect.set(left, peakTop, right, peakTop + 7f); canvas.drawRoundRect(rect, 4f, 4f, peakPaint)
+                          val reflectHeight = bh * 0.32f
+                          rect.set(left, baseLine + 6f, right, baseLine + 6f + reflectHeight); canvas.drawRoundRect(rect, 8f, 8f, reflectionPaint)
+                      }
+                  }
+
+                  private fun drawRadialBassReactor(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cx = w / 2f; val cy = h / 2f
+                      val baseRadius = (min(w, h) * 0.19f) + (bassEnergy * 0.28f)
+                      strokePaint.shader = null; strokePaint.color = colors[0]; strokePaint.strokeWidth = 6f
+                      canvas.drawCircle(cx, cy, baseRadius * 0.88f, strokePaint)
+                      strokePaint.strokeWidth = (w / numBands) * 0.55f
+                      strokePaint.shader = LinearGradient(cx - baseRadius * 2f, cy - baseRadius * 2f, cx + baseRadius * 2f, cy + baseRadius * 2f, colors, null, Shader.TileMode.CLAMP)
+
+                      for (i in 0 until numBands) {
+                          val angleDeg = (i.toFloat() / numBands) * 360f + rotationAngle
+                          val rad = (angleDeg * PI / 180.0).toFloat()
+                          val barLen = min(smoothedMagnitudes[i] * 0.85f, min(w, h) * 0.28f)
+                          canvas.drawLine(cx + cos(rad) * baseRadius, cy + sin(rad) * baseRadius, cx + cos(rad) * (baseRadius + barLen), cy + sin(rad) * (baseRadius + barLen), strokePaint)
+                          val peakLen = min(peakHeights[i] * 0.85f + 16f, min(w, h) * 0.31f)
+                          peakPaint.color = colors[0]
+                          canvas.drawCircle(cx + cos(rad) * (baseRadius + peakLen), cy + sin(rad) * (baseRadius + peakLen), 5f, peakPaint)
+                      }
+                  }
+
+                  private fun drawMilkdropLiquidWaves(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val centerY = h * 0.52f; strokePaint.shader = null
+                      for (layer in 0 until 3) {
+                          wavePath.reset()
+                          val layerScale = 1f - (layer * 0.25f)
+                          val stepX = w / (numBands / 2 - 1)
+                          var prevX = 0f; var prevY = centerY
+                          for (i in 0 until (numBands / 2)) {
+                              val x = i * stepX
+                              val rawAmp = smoothedMagnitudes[i * 2] * layerScale * 0.9f
+                              val direction = if (i % 2 == 0) 1f else -1f
+                              val y = centerY + (rawAmp * direction) + sin(wavePhase * (layer + 1) + i * 0.4f) * 20f
+                              if (i == 0) wavePath.moveTo(x, y) else {
+                                  val midX = (prevX + x) / 2f
+                                  wavePath.cubicTo(midX, prevY, midX, y, x, y)
+                              }
+                              prevX = x; prevY = y
+                          }
+                          strokePaint.color = Color.argb(85, Color.red(colors[layer]), Color.green(colors[layer]), Color.blue(colors[layer]))
+                          strokePaint.strokeWidth = 22f; canvas.drawPath(wavePath, strokePaint)
+                          strokePaint.color = colors[layer]; strokePaint.strokeWidth = 7f; canvas.drawPath(wavePath, strokePaint)
+                      }
+                  }
+
+                  private fun drawMirrorHorizonWithParticles(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      peakPaint.color = Color.argb(140, Color.red(colors[0]), Color.green(colors[0]), Color.blue(colors[0]))
+                      for (p in 0 until numParticles) {
+                          canvas.drawCircle(particleX[p] * w, particleY[p] * h, particleRadius[p] + (bassEnergy * 0.02f), peakPaint)
+                      }
+                      val centerY = h * 0.5f; val maxHalfHeight = h * 0.34f
+                      val slotWidth = w / numBands; val barWidth = slotWidth * 0.65f; val gap = slotWidth * 0.35f
+                      mainPaint.shader = LinearGradient(0f, centerY - maxHalfHeight, 0f, centerY + maxHalfHeight, intArrayOf(colors[0], colors[1], colors[2], colors[1], colors[0]), null, Shader.TileMode.CLAMP)
+
+                      for (i in 0 until numBands) {
+                          val halfH = min(smoothedMagnitudes[i] * 0.78f, maxHalfHeight)
+                          rect.set(i * slotWidth + gap / 2f, centerY - halfH, i * slotWidth + gap / 2f + barWidth, centerY + halfH)
+                          canvas.drawRoundRect(rect, barWidth / 2f, barWidth / 2f, mainPaint)
+                      }
+                      strokePaint.shader = null; strokePaint.color = colors[0]; strokePaint.strokeWidth = 4f
+                      canvas.drawLine(0f, centerY, w, centerY, strokePaint)
+                  }
+
+                  private fun drawHiFiSegmentedBlocks(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cols = 32; val maxBlocks = 24; val baseLine = h * 0.82f; val totalHeight = h * 0.60f
+                      val blockHeight = (totalHeight / maxBlocks) * 0.68f; val blockGapY = (totalHeight / maxBlocks) * 0.32f
+                      val slotWidth = w / cols; val blockWidth = slotWidth * 0.72f; val gapX = slotWidth * 0.28f
+                      mainPaint.shader = null
+
+                      for (c in 0 until cols) {
+                          val mag = smoothedMagnitudes[c * 2]
+                          val activeBlocks = ((mag / 380f) * maxBlocks).toInt().coerceIn(1, maxBlocks)
+                          val peakBlock = ((peakHeights[c * 2] / 380f) * maxBlocks).toInt().coerceIn(1, maxBlocks)
+                          val left = c * slotWidth + gapX / 2f; val right = left + blockWidth
+
+                          for (b in 0 until activeBlocks) {
+                              mainPaint.color = when {
+                                  b > maxBlocks * 0.75 -> colors[0]
+                                  b > maxBlocks * 0.35 -> colors[1]
+                                  else -> colors[2]
+                              }
+                              rect.set(left, baseLine - b * (blockHeight + blockGapY) - blockHeight, right, baseLine - b * (blockHeight + blockGapY))
+                              canvas.drawRoundRect(rect, 4f, 4f, mainPaint)
+                          }
+                          val pBottom = baseLine - peakBlock * (blockHeight + blockGapY)
+                          peakPaint.color = Color.WHITE
+                          rect.set(left, pBottom - blockHeight, right, pBottom)
+                          canvas.drawRoundRect(rect, 4f, 4f, peakPaint)
+                      }
+                  }
+
+                  override fun onDestroy() {
+                      super.onDestroy()
+                      handler.removeCallbacks(renderRunnable)
+                      stopVisualizer()
+                  }
+              }
+          }
+          EOF
+
+      - name: Inicializar Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.7
+
+      - name: Compilar APK con Gradle Wrapper
+        run: ./gradlew assembleDebug
+
+      - name: Subir APK al apartado de Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: EspectroPoweramp-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
