@@ -1,4 +1,4 @@
-name: Generar Proyecto Poweramp y Compilar APK
+name: Generar Proyecto y Compilar APK
 
 on:
   push:
@@ -92,7 +92,7 @@ jobs:
           cat << 'EOF' > app/src/main/res/values/strings.xml
           <resources>
               <string name="app_name">PowerSpectrum Wallpaper</string>
-              <string name="wallpaper_desc">Visualizadores de audio estilo Poweramp a 60 FPS</string>
+              <string name="wallpaper_desc">Visualizadores estilo Poweramp a 60 FPS</string>
           </resources>
           EOF
 
@@ -237,7 +237,6 @@ jobs:
                   container.addView(title)
                   container.addView(subtitle)
 
-                  // Sección de estilos de visualizador
                   container.addView(sectionHeader("1. ELIGE EL ESTILO DE ESPECTRO"))
 
                   val styles = listOf(
@@ -264,7 +263,6 @@ jobs:
                       container.addView(btn)
                   }
 
-                  // Sección de paletas de color
                   container.addView(sectionHeader("2. ELIGE LA PALETA DE COLORES"))
 
                   val palettes = listOf(
@@ -291,7 +289,6 @@ jobs:
                       container.addView(btn)
                   }
 
-                  // Botón principal de aplicar fondo
                   val applyBtn = Button(this).apply {
                       text = "APLICAR FONDO DE PANTALLA"
                       textSize = 16f
@@ -433,12 +430,10 @@ jobs:
                   private var wavePhase = 0f
                   private var lastAudioTimestamp = 0L
 
-                  // Detector de doble toque para cambiar de visualizador
                   private var lastTapTime = 0L
                   private var lastTapX = 0f
                   private var lastTapY = 0f
 
-                  // Partículas reactivas
                   private val numParticles = 35
                   private val particleX = FloatArray(numParticles) { Random.nextFloat() }
                   private val particleY = FloatArray(numParticles) { Random.nextFloat() }
@@ -473,7 +468,7 @@ jobs:
                           if (isVisible) {
                               updatePhysics()
                               drawFrame()
-                              handler.postDelayed(this, 16L) // ~60 FPS constantes
+                              handler.postDelayed(this, 16L)
                           }
                       }
                   }
@@ -481,4 +476,10 @@ jobs:
                   override fun onVisibilityChanged(visible: Boolean) {
                       super.onVisibilityChanged(visible)
                       isVisible = visible
-                      
+                      if (visible) {
+                          startVisualizer()
+                          handler.removeCallbacks(renderRunnable)
+                          handler.post(renderRunnable)
+                      } else {
+                          handler.removeCallbacks(renderRunnable)
+                          stopVisualiz
