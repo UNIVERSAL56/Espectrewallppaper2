@@ -1,4 +1,4 @@
-name: Compilar PowerSpectrum TouchFix APK
+name: Compilar PowerSpectrum AudioRecord APK
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generar estructura del proyecto con TouchFix
+      - name: Generar estructura del proyecto con AudioRecord
         run: |
           mkdir -p app/src/main/java/com/ejemplo/espectrowallpaper
           mkdir -p app/src/main/res/xml
@@ -72,8 +72,8 @@ jobs:
                   applicationId = "com.ejemplo.espectrowallpaper"
                   minSdk = 26
                   targetSdk = 34
-                  versionCode = 6
-                  versionName = "3.1"
+                  versionCode = 7
+                  versionName = "3.2"
               }
 
               compileOptions {
@@ -380,7 +380,9 @@ jobs:
           import android.graphics.RadialGradient
           import android.graphics.RectF
           import android.graphics.Shader
-          import android.media.audiofx.Visualizer
+          import android.media.AudioFormat
+          import android.media.AudioRecord
+          import android.media.MediaRecorder
           import android.os.SystemClock
           import android.service.wallpaper.WallpaperService
           import android.view.Choreographer
@@ -400,12 +402,13 @@ jobs:
               override fun onCreateEngine(): Engine = PowerSpectrumEngine()
 
               inner class PowerSpectrumEngine : Engine(), Choreographer.FrameCallback {
-                  private var visualizer: Visualizer? = null
+                  private var audioRecord: AudioRecord? = null
+                  private var recordingThread: Thread? = null
+                  private var isRecording = false
                   private var isVisible = false
                   private var isRendering = false
 
                   init {
-                      // Habilita los eventos táctiles para mantener el motor despierto y fluido
                       setTouchEventsEnabled(true)
                   }
 
@@ -419,7 +422,6 @@ jobs:
                   private var rotationAngle = 0f
                   private var wavePhase = 0f
                   private var lastAudioTimestamp = 0L
-                  private var lastFftPacketTime = 0L
 
                   private var lastTapTime = 0L
                   private var lastTapX = 0f
@@ -445,17 +447,20 @@ jobs:
                       super.onVisibilityChanged(visible)
                       isVisible = visible
                       if (visible) {
-                          startVisualizer()
+                          startAudioCapture()
                           startRendering()
                       } else {
                           stopRendering()
-                          stopVisualizer()
+                          stopAudioCapture()
                       }
                   }
 
                   override fun onSurfaceRedrawNeeded(holder: SurfaceHolder?) {
                       super.onSurfaceRedrawNeeded(holder)
-                      if (isVisible) restartVisualizer()
+                      if (isVisible) {
+                          stopAudioCapture()
+                          startAudioCapture()
+                      }
                   }
 
                   private fun startRendering() {
@@ -497,66 +502,89 @@ jobs:
                       }
                   }
 
-                  private fun startVisualizer() {
-                      if (visualizer != null) return
+                  private fun startAudioCapture() {
+                      if (isRecording) return
                       try {
-                          visualizer = Visualizer(0).apply {
-                              captureSize = Visualizer.getCaptureSizeRange()[1]
-                              setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
-                                  override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
-                                  override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
-                                      fft?.let {
-                                          lastFftPacketTime = SystemClock.elapsedRealtime()
-                                          parseFftLogarithmic(it)
-                                      }
+                          val sampleRate = 44100
+                          val channelConfig = AudioFormat.CHANNEL_IN_MONO
+                          val audioFormat = AudioFormat.ENCODING_PCM_16BIT
+                          val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+                          val bufferSize = max(minBufferSize, 2048)
+
+                          audioRecord = AudioRecord(
+                              MediaRecorder.AudioSource.REMOTE_SUBMIX, // Captura audio interno del sistema
+                              sampleRate,
+                              channelConfig,
+                              audioFormat,
+                              bufferSize
+                          )
+
+                          if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
+                              // Respaldo por micrófono si el audio interno está restringido
+                              audioRecord = AudioRecord(
+                                  MediaRecorder.AudioSource.MIC,
+                                  sampleRate,
+                                  channelConfig,
+                                  audioFormat,
+                                  bufferSize
+                              )
+                          }
+
+                          audioRecord?.startRecording()
+                          isRecording = true
+
+                          recordingThread = Thread {
+                              val buffer = ShortArray(1024)
+                              while (isRecording) {
+                                  val readSize = audioRecord?.read(buffer, 0, buffer.size) ?: 0
+                                  if (readSize > 0) {
+                                      processPcmData(buffer, readSize)
                                   }
-                              }, Visualizer.getMaxCaptureRate(), false, true)
-                              enabled = true
-                          }
-                      } catch (e: Exception) { e.printStackTrace() }
-                  }
-
-                  private fun stopVisualizer() {
-                      visualizer?.apply { enabled = false; release() }
-                      visualizer = null
-                  }
-
-                  private fun restartVisualizer() {
-                      stopVisualizer()
-                      startVisualizer()
-                  }
-
-                  private fun parseFftLogarithmic(fft: ByteArray) {
-                      val maxBins = (fft.size / 2) - 1
-                      if (maxBins <= 2) return
-                      var activeSignal = 0f
-                      for (i in 0 until numBands) {
-                          val ratioStart = (i.toDouble() / numBands).pow(1.75)
-                          val ratioEnd = ((i + 1).toDouble() / numBands).pow(1.75)
-                          val startBin = (1 + (ratioStart * (maxBins - 1)).toInt()).coerceIn(1, maxBins - 1)
-                          val endBin = max(startBin + 1, (1 + (ratioEnd * (maxBins - 1)).toInt()).coerceIn(1, maxBins))
-                          var sumMag = 0f
-                          for (bin in startBin until endBin) {
-                              val rfk = fft[2 * bin].toInt()
-                              val ifk = fft[2 * bin + 1].toInt()
-                              sumMag += hypot(rfk.toDouble(), ifk.toDouble()).toFloat()
-                          }
-                          val avgMag = sumMag / (endBin - startBin)
-                          val freqBoost = 1f + (i.toFloat() / numBands) * 0.9f
-                          val db = if (avgMag > 1f) 20f * log10(avgMag.toDouble()).toFloat() * freqBoost else 0f
-                          targetMagnitudes[i] = (db * 15f).coerceAtLeast(6f)
-                          activeSignal += db
+                              }
+                          }.apply { start() }
+                      } catch (e: Exception) {
+                          e.printStackTrace()
                       }
-                      if (activeSignal > 1f) lastAudioTimestamp = SystemClock.elapsedRealtime()
+                  }
+
+                  private fun stopAudioCapture() {
+                      isRecording = false
+                      try {
+                          recordingThread?.join(500)
+                      } catch (e: Exception) {
+                          e.printStackTrace()
+                      }
+                      recordingThread = null
+                      try {
+                          audioRecord?.stop()
+                          audioRecord?.release()
+                      } catch (e: Exception) {
+                          e.printStackTrace()
+                      }
+                      audioRecord = null
+                  }
+
+                  private fun processPcmData(buffer: ShortArray, readSize: Int) {
+                      var activeSignal = 0f
+                      val step = max(1, readSize / numBands)
+
+                      for (i in 0 until numBands) {
+                          val idx = (i * step).coerceIn(0, readSize - 1)
+                          val sample = buffer[idx].toFloat()
+                          val magnitude = kotlin.math.abs(sample)
+                          val db = if (magnitude > 1f) 20f * log10(magnitude.toDouble()).toFloat() else 0f
+                          
+                          targetMagnitudes[i] = (db * 1.8f).coerceAtLeast(6f)
+                          activeSignal += magnitude
+                      }
+
+                      if (activeSignal > 50f) {
+                          lastAudioTimestamp = SystemClock.elapsedRealtime()
+                      }
                   }
 
                   private fun updatePhysics() {
                       val now = SystemClock.elapsedRealtime()
-                      if (now - lastFftPacketTime > 2500L) {
-                          restartVisualizer()
-                          lastFftPacketTime = now
-                      }
-
                       val idleMode = (now - lastAudioTimestamp) > 1500L
                       wavePhase += 0.08f
                       rotationAngle = (rotationAngle + 0.4f) % 360f
@@ -871,7 +899,7 @@ jobs:
                   override fun onDestroy() {
                       super.onDestroy()
                       stopRendering()
-                      stopVisualizer()
+                      stopAudioCapture()
                   }
               }
           }
