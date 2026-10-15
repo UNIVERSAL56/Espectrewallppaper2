@@ -1,4 +1,4 @@
-name: Compilar PowerSpectrum APK
+name: Compilar PowerSpectrum APK Corregido
 
 on:
   push:
@@ -72,8 +72,8 @@ jobs:
                   applicationId = "com.ejemplo.espectrowallpaper"
                   minSdk = 26
                   targetSdk = 34
-                  versionCode = 2
-                  versionName = "2.0"
+                  versionCode = 3
+                  versionName = "2.1"
               }
 
               compileOptions {
@@ -405,6 +405,7 @@ jobs:
                   private var rotationAngle = 0f
                   private var wavePhase = 0f
                   private var lastAudioTimestamp = 0L
+                  private var lastFftPacketTime = 0L
 
                   private var lastTapTime = 0L
                   private var lastTapX = 0f
@@ -476,7 +477,10 @@ jobs:
                               setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
                                   override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
                                   override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
-                                      fft?.let { parseFftLogarithmic(it) }
+                                      fft?.let {
+                                          lastFftPacketTime = SystemClock.elapsedRealtime()
+                                          parseFftLogarithmic(it)
+                                      }
                                   }
                               }, Visualizer.getMaxCaptureRate(), false, true)
                               enabled = true
@@ -487,6 +491,11 @@ jobs:
                   private fun stopVisualizer() {
                       visualizer?.apply { enabled = false; release() }
                       visualizer = null
+                  }
+
+                  private fun restartVisualizer() {
+                      stopVisualizer()
+                      startVisualizer()
                   }
 
                   private fun parseFftLogarithmic(fft: ByteArray) {
@@ -510,11 +519,18 @@ jobs:
                           targetMagnitudes[i] = (db * 15f).coerceAtLeast(6f)
                           activeSignal += db
                       }
-                      if (activeSignal > 15f) lastAudioTimestamp = SystemClock.elapsedRealtime()
+                      if (activeSignal > 2f) lastAudioTimestamp = SystemClock.elapsedRealtime()
                   }
 
                   private fun updatePhysics() {
                       val now = SystemClock.elapsedRealtime()
+
+                      // Watchdog: si pasan más de 3 segundos sin paquetes FFT, reinicia el visualizer automáticamente
+                      if (now - lastFftPacketTime > 3000L) {
+                          restartVisualizer()
+                          lastFftPacketTime = now
+                      }
+
                       val idleMode = (now - lastAudioTimestamp) > 1500L
                       wavePhase += 0.07f
                       rotationAngle = (rotationAngle + 0.35f) % 360f
