@@ -1,4 +1,4 @@
-name: Compilar PowerSpectrum APK Optimizado
+name: Compilar PowerSpectrum 15 Modos APK
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generar estructura completa del proyecto
+      - name: Generar estructura de 15 efectos avanzados
         run: |
           mkdir -p app/src/main/java/com/ejemplo/espectrowallpaper
           mkdir -p app/src/main/res/xml
@@ -72,8 +72,8 @@ jobs:
                   applicationId = "com.ejemplo.espectrowallpaper"
                   minSdk = 26
                   targetSdk = 34
-                  versionCode = 4
-                  versionName = "2.2"
+                  versionCode = 5
+                  versionName = "3.0"
               }
 
               compileOptions {
@@ -94,8 +94,8 @@ jobs:
 
           cat << 'EOF' > app/src/main/res/values/strings.xml
           <resources>
-              <string name="app_name">PowerSpectrum Wallpaper</string>
-              <string name="wallpaper_desc">Visualizadores de audio estilo Poweramp a 60 FPS</string>
+              <string name="app_name">PowerSpectrum Ultimate</string>
+              <string name="wallpaper_desc">15 Visualizadores de audio estilo Poweramp a 60 FPS</string>
           </resources>
           EOF
 
@@ -218,13 +218,13 @@ jobs:
                   }
 
                   val title = TextView(this).apply {
-                      text = "PowerSpectrum"
+                      text = "PowerSpectrum Ultimate"
                       textSize = 28f
                       setTextColor(Color.parseColor("#00F5D4"))
                       typeface = Typeface.DEFAULT_BOLD
                   }
                   val subtitle = TextView(this).apply {
-                      text = "Visualizadores estilo Poweramp. (Doble toque en tu fondo de pantalla para cambiar de estilo al instante)."
+                      text = "15 Efectos Visuales estilo Poweramp. (Doble toque en tu pantalla de inicio para cambiar de estilo al instante)."
                       textSize = 14f
                       setTextColor(Color.parseColor("#A0AAB8"))
                       setPadding(0, 12, 0, 40)
@@ -232,14 +232,24 @@ jobs:
 
                   container.addView(title)
                   container.addView(subtitle)
-                  container.addView(sectionHeader("1. ESTILO DE ESPECTRO"))
+                  container.addView(sectionHeader("1. ELIGE ENTRE LOS 15 EFECTOS"))
 
                   val styles = listOf(
-                      0 to "Barras LED + Picos y Reflejo",
-                      1 to "Reactor Radial 360° (Bass Orb)",
-                      2 to "Ondas Líquidas Neón (Milkdrop)",
-                      3 to "Horizonte Espejo + Partículas",
-                      4 to "Ecualizador de Bloques Hi-Fi"
+                      0 to "1. Poweramp Classic LED + Picos",
+                      1 to "2. Reactor Radial 360° (Bass Orb)",
+                      2 to "3. Ondas Líquidas Neón (Milkdrop)",
+                      3 to "4. Horizonte Espejo + Partículas",
+                      4 to "5. Ecualizador de Bloques Hi-Fi",
+                      5 to "6. Anillos Céntricos de Pulso",
+                      6 to "7. Matriz de Puntos Estroboscópica",
+                      7 to "8. Efecto Láser Tunnel 3D",
+                      8 to "9. Ondas de Lissajous Armónicas",
+                      9 to "10. Lluvia de Frecuencias (Matrix)",
+                      10 to "11. Espectro Radial Estelar (StarBurst)",
+                      11 to "12. Barras Gemelas Espejo Central",
+                      12 to "13. Ondas Senoidales Superpuestas",
+                      13 to "14. Vúmetro Analógico Dinámico",
+                      14 to "15. Nebulosa de Partículas"
                   )
 
                   val styleButtons = mutableListOf<Button>()
@@ -250,7 +260,7 @@ jobs:
                       btn.setOnClickListener {
                           prefs.edit().putInt("style", id).apply()
                           styleButtons.forEachIndexed { index, b -> updateButtonStyle(b, index == id) }
-                          Toast.makeText(this, "Estilo: $name", Toast.LENGTH_SHORT).show()
+                          Toast.makeText(this, "Efecto: $name", Toast.LENGTH_SHORT).show()
                       }
                       styleButtons.add(btn)
                       container.addView(btn)
@@ -410,11 +420,11 @@ jobs:
                   private var lastTapX = 0f
                   private var lastTapY = 0f
 
-                  private val numParticles = 35
+                  private val numParticles = 45
                   private val particleX = FloatArray(numParticles) { Random.nextFloat() }
                   private val particleY = FloatArray(numParticles) { Random.nextFloat() }
-                  private val particleSpeed = FloatArray(numParticles) { Random.nextFloat() * 0.004f + 0.001f }
-                  private val particleRadius = FloatArray(numParticles) { Random.nextFloat() * 5f + 2f }
+                  private val particleSpeed = FloatArray(numParticles) { Random.nextFloat() * 0.005f + 0.001f }
+                  private val particleRadius = FloatArray(numParticles) { Random.nextFloat() * 6f + 2f }
 
                   private val rect = RectF()
                   private val wavePath = Path()
@@ -440,9 +450,7 @@ jobs:
 
                   override fun onSurfaceRedrawNeeded(holder: SurfaceHolder?) {
                       super.onSurfaceRedrawNeeded(holder)
-                      if (isVisible) {
-                          restartVisualizer()
-                      }
+                      if (isVisible) restartVisualizer()
                   }
 
                   private fun startRendering() {
@@ -473,7 +481,7 @@ jobs:
                           val dy = event.y - lastTapY
                           if (now - lastTapTime < 320L && hypot(dx.toDouble(), dy.toDouble()) < 120) {
                               val prefs = getSharedPreferences("spectrum_prefs", Context.MODE_PRIVATE)
-                              val nextStyle = (prefs.getInt("style", 0) + 1) % 5
+                              val nextStyle = (prefs.getInt("style", 0) + 1) % 15
                               prefs.edit().putInt("style", nextStyle).apply()
                               lastTapTime = 0L
                           } else {
@@ -539,33 +547,31 @@ jobs:
 
                   private fun updatePhysics() {
                       val now = SystemClock.elapsedRealtime()
-
-                      // Watchdog mejorado: reinicia el canal de audio si se estanca o pierde el enlace de permisos
                       if (now - lastFftPacketTime > 2500L) {
                           restartVisualizer()
                           lastFftPacketTime = now
                       }
 
                       val idleMode = (now - lastAudioTimestamp) > 1500L
-                      wavePhase += 0.07f
-                      rotationAngle = (rotationAngle + 0.35f) % 360f
+                      wavePhase += 0.08f
+                      rotationAngle = (rotationAngle + 0.4f) % 360f
                       var bassSum = 0f
 
                       for (i in 0 until numBands) {
                           val target = if (idleMode) (sin(wavePhase + i * 0.2f) * 18f + 24f).coerceAtLeast(8f) else targetMagnitudes[i]
-                          smoothedMagnitudes[i] = if (target > smoothedMagnitudes[i]) smoothedMagnitudes[i] + (target - smoothedMagnitudes[i]) * 0.6f else max(8f, smoothedMagnitudes[i] * 0.85f)
+                          smoothedMagnitudes[i] = if (target > smoothedMagnitudes[i]) smoothedMagnitudes[i] + (target - smoothedMagnitudes[i]) * 0.65f else max(8f, smoothedMagnitudes[i] * 0.82f)
 
                           if (smoothedMagnitudes[i] >= peakHeights[i]) {
                               peakHeights[i] = smoothedMagnitudes[i]
                               peakVelocities[i] = 0f
                           } else {
-                              peakVelocities[i] += 0.4f
+                              peakVelocities[i] += 0.45f
                               peakHeights[i] = max(smoothedMagnitudes[i], peakHeights[i] - peakVelocities[i])
                           }
                           if (i < 10) bassSum += smoothedMagnitudes[i]
                       }
-                      bassEnergy += ((bassSum / 10f) - bassEnergy) * 0.4f
-                      val speedMultiplier = 1f + (bassEnergy / 120f)
+                      bassEnergy += ((bassSum / 10f) - bassEnergy) * 0.45f
+                      val speedMultiplier = 1f + (bassEnergy / 100f)
                       for (p in 0 until numParticles) {
                           particleY[p] -= particleSpeed[p] * speedMultiplier
                           if (particleY[p] < 0f) { particleY[p] = 1f; particleX[p] = Random.nextFloat() }
@@ -604,17 +610,28 @@ jobs:
                                   2 -> drawMilkdropLiquidWaves(canvas, w, h, colors)
                                   3 -> drawMirrorHorizonWithParticles(canvas, w, h, colors)
                                   4 -> drawHiFiSegmentedBlocks(canvas, w, h, colors)
+                                  5 -> drawHypnoticRings(canvas, w, h, colors)
+                                  6 -> drawDotGridStrobe(canvas, w, h, colors)
+                                  7 -> drawLaserTunnel3D(canvas, w, h, colors)
+                                  8 -> drawLissajousHarmonics(canvas, w, h, colors)
+                                  9 -> drawMatrixRain(canvas, w, h, colors)
+                                  10 -> drawStarBurst(canvas, w, h, colors)
+                                  11 -> drawDualCenterMirror(canvas, w, h, colors)
+                                  12 -> drawSuperimposedSines(canvas, w, h, colors)
+                                  13 -> drawVumeterAnalog(canvas, w, h, colors)
+                                  14 -> drawParticleNebula(canvas, w, h, colors)
                               }
                           }
                       } finally { if (canvas != null) holder.unlockCanvasAndPost(canvas) }
                   }
 
                   private fun drawBassAura(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
-                      val radius = (w * 0.45f) + (bassEnergy * 1.4f)
-                      glowPaint.shader = RadialGradient(w / 2f, h / 2f, radius.coerceAtLeast(10f), Color.argb(42, Color.red(colors[1]), Color.green(colors[1]), Color.blue(colors[1])), Color.TRANSPARENT, Shader.TileMode.CLAMP)
+                      val radius = (w * 0.45f) + (bassEnergy * 1.5f)
+                      glowPaint.shader = RadialGradient(w / 2f, h / 2f, radius.coerceAtLeast(10f), Color.argb(55, Color.red(colors[1]), Color.green(colors[1]), Color.blue(colors[1])), Color.TRANSPARENT, Shader.TileMode.CLAMP)
                       canvas.drawCircle(w / 2f, h / 2f, radius, glowPaint)
                   }
 
+                  // 1. Classic Poweramp LED
                   private fun drawPowerampClassicLED(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
                       val baseLine = h * 0.74f; val maxBarHeight = h * 0.50f
                       val slotWidth = w / numBands; val barWidth = slotWidth * 0.68f; val gap = slotWidth * 0.32f
@@ -627,13 +644,12 @@ jobs:
                           val ph = min(peakHeights[i] * 1.15f, maxBarHeight + 18f)
                           val left = i * slotWidth + gap / 2f; val right = left + barWidth
                           rect.set(left, baseLine - bh, right, baseLine); canvas.drawRoundRect(rect, 8f, 8f, mainPaint)
-                          val peakTop = baseLine - ph - 10f
-                          rect.set(left, peakTop, right, peakTop + 7f); canvas.drawRoundRect(rect, 4f, 4f, peakPaint)
-                          val reflectHeight = bh * 0.32f
-                          rect.set(left, baseLine + 6f, right, baseLine + 6f + reflectHeight); canvas.drawRoundRect(rect, 8f, 8f, reflectionPaint)
+                          rect.set(left, baseLine - ph - 10f, right, baseLine - ph - 3f); canvas.drawRoundRect(rect, 4f, 4f, peakPaint)
+                          rect.set(left, baseLine + 6f, right, baseLine + 6f + (bh * 0.32f)); canvas.drawRoundRect(rect, 8f, 8f, reflectionPaint)
                       }
                   }
 
+                  // 2. Radial Bass Reactor
                   private fun drawRadialBassReactor(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
                       val cx = w / 2f; val cy = h / 2f
                       val baseRadius = (min(w, h) * 0.19f) + (bassEnergy * 0.28f)
@@ -647,12 +663,12 @@ jobs:
                           val rad = (angleDeg * PI / 180.0).toFloat()
                           val barLen = min(smoothedMagnitudes[i] * 0.85f, min(w, h) * 0.28f)
                           canvas.drawLine(cx + cos(rad) * baseRadius, cy + sin(rad) * baseRadius, cx + cos(rad) * (baseRadius + barLen), cy + sin(rad) * (baseRadius + barLen), strokePaint)
-                          val peakLen = min(peakHeights[i] * 0.85f + 16f, min(w, h) * 0.31f)
                           peakPaint.color = colors[0]
-                          canvas.drawCircle(cx + cos(rad) * (baseRadius + peakLen), cy + sin(rad) * (baseRadius + peakLen), 5f, peakPaint)
+                          canvas.drawCircle(cx + cos(rad) * (baseRadius + barLen + 12f), cy + sin(rad) * (baseRadius + barLen + 12f), 4f, peakPaint)
                       }
                   }
 
+                  // 3. Milkdrop Liquid Waves
                   private fun drawMilkdropLiquidWaves(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
                       val centerY = h * 0.52f; strokePaint.shader = null
                       for (layer in 0 until 3) {
@@ -664,19 +680,20 @@ jobs:
                               val x = i * stepX
                               val rawAmp = smoothedMagnitudes[i * 2] * layerScale * 0.9f
                               val direction = if (i % 2 == 0) 1f else -1f
-                              val y = centerY + (rawAmp * direction) + sin(wavePhase * (layer + 1) + i * 0.4f) * 20f
+                              val y = centerY + (rawAmp * direction) + sin(wavePhase * (layer + 1) + i * 0.4f) * 22f
                               if (i == 0) wavePath.moveTo(x, y) else {
                                   val midX = (prevX + x) / 2f
                                   wavePath.cubicTo(midX, prevY, midX, y, x, y)
                               }
                               prevX = x; prevY = y
                           }
-                          strokePaint.color = Color.argb(85, Color.red(colors[layer]), Color.green(colors[layer]), Color.blue(colors[layer]))
-                          strokePaint.strokeWidth = 22f; canvas.drawPath(wavePath, strokePaint)
-                          strokePaint.color = colors[layer]; strokePaint.strokeWidth = 7f; canvas.drawPath(wavePath, strokePaint)
+                          strokePaint.color = Color.argb(90, Color.red(colors[layer]), Color.green(colors[layer]), Color.blue(colors[layer]))
+                          strokePaint.strokeWidth = 24f; canvas.drawPath(wavePath, strokePaint)
+                          strokePaint.color = colors[layer]; strokePaint.strokeWidth = 8f; canvas.drawPath(wavePath, strokePaint)
                       }
                   }
 
+                  // 4. Mirror Horizon + Particles
                   private fun drawMirrorHorizonWithParticles(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
                       peakPaint.color = Color.argb(140, Color.red(colors[0]), Color.green(colors[0]), Color.blue(colors[0]))
                       for (p in 0 until numParticles) {
@@ -695,6 +712,7 @@ jobs:
                       canvas.drawLine(0f, centerY, w, centerY, strokePaint)
                   }
 
+                  // 5. Hi-Fi Segmented Blocks
                   private fun drawHiFiSegmentedBlocks(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
                       val cols = 32; val maxBlocks = 24; val baseLine = h * 0.82f; val totalHeight = h * 0.60f
                       val blockHeight = (totalHeight / maxBlocks) * 0.68f; val blockGapY = (totalHeight / maxBlocks) * 0.32f
@@ -716,10 +734,150 @@ jobs:
                               rect.set(left, baseLine - b * (blockHeight + blockGapY) - blockHeight, right, baseLine - b * (blockHeight + blockGapY))
                               canvas.drawRoundRect(rect, 4f, 4f, mainPaint)
                           }
-                          val pBottom = baseLine - peakBlock * (blockHeight + blockGapY)
                           peakPaint.color = Color.WHITE
-                          rect.set(left, pBottom - blockHeight, right, pBottom)
+                          rect.set(left, baseLine - peakBlock * (blockHeight + blockGapY) - blockHeight, right, baseLine - peakBlock * (blockHeight + blockGapY))
                           canvas.drawRoundRect(rect, 4f, 4f, peakPaint)
+                      }
+                  }
+
+                  // 6. Hypnotic Rings
+                  private fun drawHypnoticRings(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cx = w / 2f; val cy = h / 2f
+                      strokePaint.shader = null
+                      for (r in 1..6) {
+                          val ringRadius = (min(w, h) * 0.12f * r) + (bassEnergy * (r * 0.3f))
+                          strokePaint.color = colors[(r - 1) % colors.size]
+                          strokePaint.strokeWidth = 4f + (r * 0.8f)
+                          canvas.drawCircle(cx, cy, ringRadius, strokePaint)
+                      }
+                  }
+
+                  // 7. Dot Grid Strobe
+                  private fun drawDotGridStrobe(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val rows = 10; val cols = 16
+                      val cellW = w / cols; val cellH = h / rows
+                      for (r in 0 until rows) {
+                          for (c in 0 until cols) {
+                              val index = (r * cols + c) % numBands
+                              val mag = smoothedMagnitudes[index]
+                              val radius = (mag * 0.08f).coerceIn(2f, cellW * 0.42f)
+                              mainPaint.color = colors[(r + c) % colors.size]
+                              canvas.drawCircle(c * cellW + cellW / 2f, r * cellH + cellH / 2f, radius, mainPaint)
+                          }
+                      }
+                  }
+
+                  // 8. Laser Tunnel 3D
+                  private fun drawLaserTunnel3D(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cx = w / 2f; val cy = h / 2f
+                      strokePaint.shader = null
+                      for (i in 0 until 12) {
+                          val boxScale = (i * 0.08f) + ((wavePhase * 0.05f) % 0.08f)
+                          val bw = w * boxScale + (bassEnergy * 0.5f)
+                          val bh = h * boxScale + (bassEnergy * 0.5f)
+                          strokePaint.color = colors[i % colors.size]
+                          strokePaint.strokeWidth = 3f + (i * 0.5f)
+                          rect.set(cx - bw / 2f, cy - bh / 2f, cx + bw / 2f, cy + bh / 2f)
+                          canvas.drawRect(rect, strokePaint)
+                      }
+                  }
+
+                  // 9. Lissajous Harmonics
+                  private fun drawLissajousHarmonics(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cx = w / 2f; val cy = h / 2f
+                      strokePaint.shader = null; strokePaint.color = colors[0]; strokePaint.strokeWidth = 5f
+                      wavePath.reset()
+                      val steps = 120
+                      for (i in 0..steps) {
+                          val t = (i.toFloat() / steps) * (2f * PI.toFloat())
+                          val scale = min(w, h) * 0.35f + bassEnergy
+                          val x = cx + sin(3f * t + wavePhase) * scale
+                          val y = cy + cos(2f * t) * scale
+                          if (i == 0) wavePath.moveTo(x, y) else wavePath.lineTo(x, y)
+                      }
+                      canvas.drawPath(wavePath, strokePaint)
+                  }
+
+                  // 10. Matrix Rain
+                  private fun drawMatrixRain(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cols = 24; val slotW = w / cols
+                      mainPaint.color = colors[1]
+                      for (c in 0 until cols) {
+                          val mag = smoothedMagnitudes[c * 2]
+                          val dropH = min(mag * 2f, h)
+                          val left = c * slotW + slotW * 0.2f
+                          rect.set(left, 0f, left + slotW * 0.6f, dropH)
+                          canvas.drawRoundRect(rect, 4f, 4f, mainPaint)
+                      }
+                  }
+
+                  // 11. StarBurst Radial Spectrum
+                  private fun drawStarBurst(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cx = w / 2f; val cy = h / 2f
+                      strokePaint.shader = null; strokePaint.strokeWidth = 4f
+                      for (i in 0 until numBands) {
+                          val angle = (i.toFloat() / numBands) * (2f * PI.toFloat()) + rotationAngle
+                          val len = smoothedMagnitudes[i] * 1.5f + bassEnergy
+                          strokePaint.color = colors[i % colors.size]
+                          canvas.drawLine(cx, cy, cx + cos(angle) * (w * 0.2f + len), cy + sin(angle) * (h * 0.2f + len), strokePaint)
+                      }
+                  }
+
+                  // 12. Dual Center Mirror Bars
+                  private fun drawDualCenterMirror(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cy = h * 0.5f; val halfBands = numBands / 2
+                      val slotW = w / halfBands; val barW = slotW * 0.65f
+                      mainPaint.shader = LinearGradient(0f, cy - h * 0.3f, 0f, cy + h * 0.3f, colors, null, Shader.TileMode.CLAMP)
+
+                      for (i in 0 until halfBands) {
+                          val mag = min(smoothedMagnitudes[i] * 0.9f, h * 0.35f)
+                          val left = cxOffset(w, halfBands, i, slotW, barW) // helper style
+                          rect.set(i * slotW, cy - mag, i * slotW + barW, cy + mag)
+                          canvas.drawRoundRect(rect, 6f, 6f, mainPaint)
+                      }
+                  }
+                  private fun cxOffset(w: Float, count: Int, i: Int, slotW: Float, barW: Float): Float = i * slotW
+
+                  // 13. Superimposed Sines
+                  private fun drawSuperimposedSines(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      strokePaint.shader = null
+                      for (layer in 0 until 3) {
+                          wavePath.reset()
+                          val stepX = w / 40f
+                          var prevX = 0f; var prevY = h / 2f
+                          for (i in 0..40) {
+                              val x = i * stepX
+                              val y = (h / 2f) + sin(wavePhase * (layer + 1) + (i * 0.3f)) * (40f + bassEnergy * (layer + 1))
+                              if (i == 0) wavePath.moveTo(x, y) else {
+                                  val midX = (prevX + x) / 2f
+                                  wavePath.cubicTo(midX, prevY, midX, y, x, y)
+                              }
+                              prevX = x; prevY = y
+                          }
+                          strokePaint.color = colors[layer]
+                          strokePaint.strokeWidth = 6f
+                          canvas.drawPath(wavePath, strokePaint)
+                      }
+                  }
+
+                  // 14. Vúmetro Analógico
+                  private fun drawVumeterAnalog(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      val cx = w / 2f; val cy = h * 0.65f
+                      strokePaint.shader = null; strokePaint.color = colors[0]; strokePaint.strokeWidth = 6f
+                      canvas.drawArc(cx - w * 0.35f, cy - w * 0.35f, cx + w * 0.35f, cy + w * 0.35f, 180f, 180f, false, strokePaint)
+
+                      // Aguja reactiva al bajo
+                      val angleDeg = 180.0 + (bassEnergy * 1.2f).coerceIn(0f, 180f)
+                      val rad = (angleDeg * PI / 180.0).toFloat()
+                      strokePaint.color = colors[2]; strokePaint.strokeWidth = 8f
+                      canvas.drawLine(cx, cy, cx + cos(rad) * (w * 0.28f), cy + sin(rad) * (w * 0.28f), strokePaint)
+                  }
+
+                  // 15. Particle Nebula
+                  private fun drawParticleNebula(canvas: Canvas, w: Float, h: Float, colors: IntArray) {
+                      for (p in 0 until numParticles) {
+                          peakPaint.color = colors[p % colors.size]
+                          canvas.drawCircle(particleX[p] * w, particleY[p] * h, particleRadius[p] + (bassEnergy * 0.05f), peakPaint)
                       }
                   }
 
